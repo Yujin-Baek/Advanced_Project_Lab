@@ -23,5 +23,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('ask/', views.AskQuestionView.as_view(), name='ask-question'),
     path('response/<int:pk>/', views.GetResponseView.as_view(), name='get-response'),
-
+    path('summary/', views.SummaryView.as_view(), name='summary'),  # 새로 추가된 URL
+    path('reset/', views.ResetConversationView.as_view(), name='reset-conversation'),
 ]
