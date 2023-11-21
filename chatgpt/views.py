@@ -1,4 +1,7 @@
 import openai
+from openai import OpenAI
+
+client = OpenAI(api_key="")
 from rest_framework import generics, status
 from rest_framework.response import Response
 from .models import UserQuestion
@@ -6,7 +9,7 @@ from .serializers import UserQuestionSerializer
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 
-openai.api_key = ""
+
 
 
 # views.py
@@ -24,12 +27,10 @@ class AskQuestionView(generics.CreateAPIView):
         try:
             # 챗봇 응답 처리
             # history = user_question.conversation_history
-            history.append({"role": "user", "content": user_question.question})  # 사용자의 질문을 히스토리에 추가
+            history.append({"role": "user", "content": user_question.question + "Please answer in Korean." + "Can you make it sound as natural as a person speaking, similar to how a real counselor would talk?"})  # 사용자의 질문을 히스토리에 추가
 
-            completion = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=history  # 대화 히스토리를 messages로 전송
-            )
+            completion = client.chat.completions.create(model="gpt-3.5-turbo",
+            messages=history)
 
             response = completion.choices[0].message.content
 
@@ -47,7 +48,7 @@ class AskQuestionView(generics.CreateAPIView):
     "response": response,
     "conversation_history": user_question.conversation_history})
 
-        except openai.error.RateLimitError:
+        except openai.RateLimitError:
             user_question.delete()
             return Response({"error": "API rate limit exceeded."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
@@ -64,7 +65,7 @@ class SummaryView(APIView):
 
     def post(self, request, *args, **kwargs):
         # 특정 질문 설정
-        specific_question = "지금까지 우리가 한 대화내용을 세 줄로 요약해줘. 보고서의 결론 부분처럼 요약해줘"
+        specific_question = "Please summarize our conversation so far in three lines, like the conclusion part of a report." + "Please answer in Korean."
 
         # 대화 이력 가져오기
         # 여기서는 예시로 빈 리스트를 사용하겠습니다. 실제 구현에서는 적절한 방법으로 대화 이력을 가져와야 합니다.
@@ -72,10 +73,8 @@ class SummaryView(APIView):
         try:
             history.append({"role": "user", "content": specific_question})
 
-            completion = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=history
-            )
+            completion = client.chat.completions.create(model="gpt-3.5-turbo",
+            messages=history)
 
             response = completion.choices[0].message.content
             print(history)
@@ -87,7 +86,7 @@ class SummaryView(APIView):
                 "response": response,
                 "conversation_history": history
             })
-        except openai.error.RateLimitError:
+        except openai.RateLimitError:
             return Response({"error": "API rate limit exceeded."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
 class ResetConversationView(APIView):
@@ -96,9 +95,9 @@ class ResetConversationView(APIView):
     def post(self, request, *args, **kwargs):
         # Resetting the conversation history
         global history
-        role = f'You are a {request.data["role"]} counselor'
+        role = f'You are a customized counselor for people with the {request.data["mbti"]} personality type. '
 
         history.append({'role': 'system', 'content': role})
-        history.append({'role': 'user', 'content': '점심메뉴 뭐 먹을지 고민돼.'})
+        history.append({'role': 'user', 'content': "Never say hello in our conversations." + "Also, never do self-introductions." + "Please show more empathy to MBTI types that include 'F'. For types with 'T', provide answers focused on practical solutions."})
 
         return Response({"message": f"Conversation history has been {role}."})
