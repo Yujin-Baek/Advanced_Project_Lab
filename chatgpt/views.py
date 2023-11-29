@@ -29,7 +29,7 @@ class AskQuestionView(generics.CreateAPIView):
             # history = user_question.conversation_history
             history.append({"role": "user", "content": user_question.question + "Please answer in Korean." + "Can you make it sound as natural as a person speaking, similar to how a real counselor would talk?"})  # 사용자의 질문을 히스토리에 추가
 
-            completion = client.chat.completions.create(model="gpt-3.5-turbo",
+            completion = client.chat.completions.create(model="gpt-4",
             messages=history)
 
             response = completion.choices[0].message.content
@@ -65,7 +65,7 @@ class SummaryView(APIView):
 
     def post(self, request, *args, **kwargs):
         # 특정 질문 설정
-        specific_question = "Please summarize our conversation so far in three lines, like the conclusion part of a report." + "Please answer in Korean."
+        specific_question = "Summarize our conversation so far using numbered and bulleted lists, and keep it to five lines or less." + "Leaving out the thanks and encouragement." + "Please answer in Korean."
 
         # 대화 이력 가져오기
         # 여기서는 예시로 빈 리스트를 사용하겠습니다. 실제 구현에서는 적절한 방법으로 대화 이력을 가져와야 합니다.
@@ -95,9 +95,23 @@ class ResetConversationView(APIView):
     def post(self, request, *args, **kwargs):
         # Resetting the conversation history
         global history
-        role = f'You are a customized counselor for people with the {request.data["mbti"]} personality type. '
+        mbti = request.data["mbti"].upper()
+
+        if 'N' in mbti and 'F' in mbti:
+            style = "Show empathy and understanding towards feelings and intuition."
+        elif 'N' in mbti and 'T' in mbti:
+            style = "Provide logical and practical solutions, focusing on intuition."
+        elif 'S' in mbti and 'F' in mbti:
+            style = "Emphasize empathy and provide concrete advice, focusing on sensing."
+        elif 'S' in mbti and 'T' in mbti:
+            style = "Offer practical solutions and realistic advice, focusing on sensing."
+        else:
+            style = "Adopt a balanced counseling approach."
+
+        role = f'You are a customized counselor for people with the {mbti} personality type. {style}'
 
         history.append({'role': 'system', 'content': role})
-        history.append({'role': 'user', 'content': "Never say hello in our conversations." + "Also, never do self-introductions." + "Please show more empathy to MBTI types that include 'F'. For types with 'T', provide answers focused on practical solutions."})
+        history.append({'role': 'user',
+                        'content': "Never say hello in our conversations." + "Never do self-introductions." + "Don't talk about things unrelated to the issue at hand" + "Speak like a professional psychologist." + "Please show more empathy to MBTI types that include 'F'. For types with 'T', provide answers focused on practical solutions."})
 
         return Response({"message": f"Conversation history has been {role}."})
